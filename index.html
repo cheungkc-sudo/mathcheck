@@ -1,1 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MathCheck HK — Live AI Step Checker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    @keyframes scan {
+      0% { top: 0%; opacity: 0.8; }
+      50% { top: 90%; opacity: 1; }
+      100% { top: 0%; opacity: 0.8; }
+    }
+    .scanner-beam {
+      animation: scan 2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen pb-12">
 
+  <!-- Navigation Header -->
+  <header class="bg-indigo-700 text-white sticky top-0 z-30 shadow-md">
+    <div class="max-w-xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <i class="fa-solid fa-square-root-variable text-amber-300 text-xl"></i>
+        <div>
+          <h1 class="font-bold text-base leading-tight tracking-wide">MathCheck HK</h1>
+          <p class="text-[10px] text-indigo-200 tracking-wider">EMI Secondary Mathematics Lab</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="bg-indigo-800/80 px-2.5 py-1 rounded-full text-xs font-semibold text-amber-300 border border-indigo-500/30 flex items-center gap-1.5">
+          <i class="fa-solid fa-bolt text-[11px]"></i>
+          <span id="userXp">140</span> XP
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-xl mx-auto px-4 pt-4 space-y-4">
+
+    <!-- Mode Badge -->
+    <div class="flex items-center justify-between bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+      <div class="flex items-center space-x-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-xs font-semibold text-slate-700" id="backendStatus">Live Vision AI Enabled</span>
+      </div>
+      <span class="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">HK DSE Curriculum</span>
+    </div>
+
+    <!-- Camera / Upload Section -->
+    <div class="bg-white rounded-2xl border-2 border-dashed border-indigo-200 p-6 text-center relative overflow-hidden shadow-sm">
+      
+      <!-- Hidden File Input targeting Device Camera -->
+      <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+
+      <div id="uploadPlaceholder" class="space-y-3">
+        <div class="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl mx-auto flex items-center justify-center text-2xl shadow-inner">
+          <i class="fa-solid fa-camera"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-800 text-base">Snap Your Handwritten Steps</h3>
+          <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">Take a clear photo of your homework notebook. The AI will inspect your step-by-step logic.</p>
+        </div>
+        <div class="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
+          <button onclick="document.getElementById('cameraInput').click()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-indigo-100 transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-camera"></i> Take Photo
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview & Scanning Animation Overlay -->
+      <div id="previewContainer" class="hidden relative rounded-xl overflow-hidden max-h-72 border border-slate-200 bg-slate-900">
+        <img id="previewImage" class="w-full h-auto object-contain mx-auto" alt="Captured Math Working">
+        
+        <!-- Animated Scanning Beam -->
+        <div id="scannerBeam" class="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#22d3ee] scanner-beam"></div>
+        
+        <div id="loadingOverlay" class="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex flex-col items-center justify-center text-white p-4">
+          <div class="w-10 h-10 border-4 border-white/20 border-t-amber-400 rounded-full animate-spin mb-3"></div>
+          <p class="text-xs font-semibold tracking-wide">Transcribing handwritten steps...</p>
+          <p class="text-[10px] text-slate-300 mt-1">Verifying mathematical equivalence line-by-line</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Verification Output Container -->
+    <div id="resultsCard" class="hidden space-y-4">
+      
+      <!-- Status Card -->
+      <div id="statusBanner" class="p-4 rounded-xl border flex items-start gap-3">
+        <div id="statusIcon" class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-base"></div>
+        <div class="flex-1">
+          <div class="flex items-center justify-between">
+            <h4 id="statusTitle" class="font-bold text-sm"></h4>
+            <span id="statusTopic" class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-white/70 border"></span>
+          </div>
+          <p id="statusDesc" class="text-xs mt-1 leading-relaxed"></p>
+        </div>
+      </div>
+
+      <!-- Ambiguity Notice (If handwriting was unclear) -->
+      <div id="ambiguityBox" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2.5">
+        <i class="fa-solid fa-triangle-exclamation text-amber-500 shrink-0 mt-0.5"></i>
+        <div>
+          <span class="font-bold">Handwriting Clarification:</span>
+          <p id="ambiguityText" class="mt-0.5 text-slate-600"></p>
+        </div>
+      </div>
+
+      <!-- Step-by-Step Breakdown -->
+      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <i class="fa-solid fa-list-check text-indigo-500"></i> Step-by-Step Verification
+        </h4>
+        <div id="stepsList" class="space-y-2.5 text-xs"></div>
+      </div>
+
+      <!-- Socratic Guidance Box -->
+      <div id="guidanceBox" class="hidden bg-gradient-to-br from-indigo-50 to-blue-50 border border-indigo-100 rounded-xl p-4 shadow-sm">
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fa-solid fa-lightbulb text-amber-500 text-sm"></i>
+          <h4 class="font-bold text-xs text-indigo-900 uppercase tracking-wider">Teacher Guidance & Nudge</h4>
+        </div>
+        <p id="hintStepPrompt" class="text-xs font-medium text-slate-700 bg-white p-3 rounded-lg border border-indigo-100 leading-relaxed"></p>
+        <p id="mindsetMessage" class="text-[11px] text-indigo-600 mt-2 font-medium italic"></p>
+      </div>
+
+      <!-- Reset Button -->
+      <button onclick="resetScanner()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs transition border border-slate-300">
+        <i class="fa-solid fa-arrow-rotate-left mr-1.5"></i> Scan Another Problem
+      </button>
+
+    </div>
+
+  </main>
+
+  <script>
+    const cameraInput = document.getElementById('cameraInput');
+    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
+    const previewContainer = document.getElementById('previewContainer');
+    const previewImage = document.getElementById('previewImage');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const resultsCard = document.getElementById('resultsCard');
+
+    cameraInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // 1. Show preview instantly
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const fullBase64 = event.target.result;
+        previewImage.src = fullBase64;
+        uploadPlaceholder.classList.add('hidden');
+        previewContainer.classList.remove('hidden');
+        loadingOverlay.classList.remove('hidden');
+        resultsCard.classList.add('hidden');
+
+        // 2. Compress image before sending to avoid payload limits
+        const compressedBase64 = await compressImage(fullBase64, 1280, 0.82);
+
+        // 3. Send to Netlify Serverless Function
+        try {
+          const res = await fetch('/api/check-math', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageBase64: compressedBase64 })
+          });
+
+          if (!res.ok) {
+            throw new Error(`Server returned status ${res.status}`);
+          }
+
+          const analysis = await res.json();
+          renderAnalysis(analysis);
+        } catch (err) {
+          console.error(err);
+          alert('Unable to connect to AI vision server. Please verify your GEMINI_API_KEY in Netlify.');
+          loadingOverlay.classList.add('hidden');
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Helper: Resizes large phone photos down to max 1280px in browser
+    function compressImage(base64Str, maxWidth, quality) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.src = base64Str;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+      });
+    }
+
+    function renderAnalysis(data) {
+      loadingOverlay.classList.add('hidden');
+      resultsCard.classList.remove('hidden');
+
+      const isCorrect = data.overall_status === 'CORRECT';
+      const isAmbiguous = data.overall_status === 'AMBIGUOUS';
+
+      // Status Banner
+      const statusBanner = document.getElementById('statusBanner');
+      const statusIcon = document.getElementById('statusIcon');
+      const statusTitle = document.getElementById('statusTitle');
+      const statusTopic = document.getElementById('statusTopic');
+      const statusDesc = document.getElementById('statusDesc');
+
+      statusTopic.textContent = data.topic || 'DSE Mathematics';
+
+      if (isCorrect) {
+        statusBanner.className = 'p-4 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900';
+        statusIcon.className = 'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-emerald-500 text-white';
+        statusIcon.innerHTML = '<i class="fa-solid fa-check"></i>';
+        statusTitle.textContent = 'Excellent! Complete & Rigorous';
+        statusDesc.textContent = 'Every single step is mathematically sound. Great precision!';
+      } else if (isAmbiguous) {
+        statusBanner.className = 'p-4 rounded-xl border bg-amber-50 border-amber-200 text-amber-900';
+        statusIcon.className = 'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-500 text-white';
+        statusIcon.innerHTML = '<i class="fa-solid fa-question"></i>';
+        statusTitle.textContent = 'Verification Paused: Handwriting Check';
+        statusDesc.textContent = 'The AI requires clarification on one of your symbols before confirming.';
+      } else {
+        statusBanner.className = 'p-4 rounded-xl border bg-amber-50 border-amber-200 text-amber-900';
+        statusIcon.className = 'w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-amber-500 text-white';
+        statusIcon.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
+        statusTitle.textContent = 'Review Needed in Working';
+        statusDesc.textContent = `A deviation was detected around Step ${data.socratic_hint?.target_step_number || '2'}. Take a close look!`;
+      }
+
+      // Ambiguity Box
+      const ambiguityBox = document.getElementById('ambiguityBox');
+      if (data.ambiguity_notice) {
+        ambiguityBox.classList.remove('hidden');
+        document.getElementById('ambiguityText').textContent = data.ambiguity_notice;
+      } else {
+        ambiguityBox.classList.add('hidden');
+      }
+
+      // Step-by-Step Breakdown
+      const stepsList = document.getElementById('stepsList');
+      stepsList.innerHTML = '';
+      (data.steps || []).forEach(step => {
+        const stepDiv = document.createElement('div');
+        const isStepError = step.status === 'incorrect';
+        stepDiv.className = `p-2.5 rounded-lg border flex items-center justify-between ${
+          isStepError ? 'bg-amber-50/70 border-amber-300' : 'bg-slate-50 border-slate-200'
+        }`;
+        stepDiv.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+              isStepError ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-700'
+            }">${step.step_number}</span>
+            <code class="font-mono text-xs text-slate-800">${step.latex || ''}</code>
+          </div>
+          <span class="text-[10px] font-semibold ${isStepError ? 'text-amber-700' : 'text-emerald-600'}">
+            ${isStepError ? '<i class="fa-solid fa-circle-exclamation"></i> Check Here' : '<i class="fa-solid fa-check"></i> Valid'}
+          </span>
+        `;
+        stepsList.appendChild(stepDiv);
+      });
+
+      // Socratic Guidance Box
+      const guidanceBox = document.getElementById('guidanceBox');
+      if (!isCorrect && data.socratic_hint) {
+        guidanceBox.classList.remove('hidden');
+        document.getElementById('hintStepPrompt').textContent = data.socratic_hint.hint_level_1 || '';
+        document.getElementById('mindsetMessage').textContent = `💡 ${data.socratic_hint.growth_mindset_message || 'Keep at it—finding your own mistake builds lasting understanding!'}`;
+      } else {
+        guidanceBox.classList.add('hidden');
+      }
+
+      // Award XP
+      if (data.awarded_xp) {
+        const curXp = parseInt(document.getElementById('userXp').textContent, 10);
+        document.getElementById('userXp').textContent = curXp + data.awarded_xp;
+      }
+    }
+
+    function resetScanner() {
+      cameraInput.value = '';
+      uploadPlaceholder.classList.remove('hidden');
+      previewContainer.classList.add('hidden');
+      resultsCard.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>

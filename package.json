@@ -1,0 +1,9 @@
+{
+  "name": "mathcheck-hk",
+  "version": "1.0.0",
+  "description": "MathCheck HK Live Vision Step-by-Step AI Checker",
+  "scripts": {
+    "start": "netlify dev"
+  },
+  "dependencies": {}
+}
